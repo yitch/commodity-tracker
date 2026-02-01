@@ -1,5 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import yahooFinance from 'yahoo-finance2';
+import YahooFinance from 'yahoo-finance2';
+
+// Create instance of yahoo finance
+const yahooFinance = new YahooFinance();
 
 export interface AssetQuote {
   ticker: string;
@@ -45,7 +47,7 @@ export async function getAssetQuote(ticker: string): Promise<AssetQuote | null> 
     let historicalPrices: number[] = [];
 
     try {
-      const historical: any[] = await (yahooFinance as any).historical(ticker, {
+      const historical: any[] = await yahooFinance.historical(ticker, {
         period1: startDate,
         period2: endDate,
         interval: '1d',
@@ -54,9 +56,8 @@ export async function getAssetQuote(ticker: string): Promise<AssetQuote | null> 
       historicalPrices = historical
         .filter((q: any) => q.close !== null && q.close !== undefined)
         .map((q: any) => q.close as number);
-    } catch {
-      // If historical fails, continue with empty array
-      console.log(`Could not fetch historical data for ${ticker}`);
+    } catch (e) {
+      console.log(`Could not fetch historical data for ${ticker}:`, e);
     }
 
     const currentPrice = quote.regularMarketPrice || 0;
@@ -70,7 +71,7 @@ export async function getAssetQuote(ticker: string): Promise<AssetQuote | null> 
     let ytdChange: number | null = null;
     try {
       const yearStart = new Date(new Date().getFullYear(), 0, 1);
-      const ytdHistorical: any[] = await (yahooFinance as any).historical(ticker, {
+      const ytdHistorical: any[] = await yahooFinance.historical(ticker, {
         period1: yearStart,
         period2: endDate,
         interval: '1d',
@@ -79,7 +80,7 @@ export async function getAssetQuote(ticker: string): Promise<AssetQuote | null> 
       const ytdPrices = ytdHistorical.filter((q: any) => q.close !== null);
       const ytdStartPrice = ytdPrices.length > 0 ? ytdPrices[0].close : null;
       ytdChange = ytdStartPrice ? calculatePercentChange(currentPrice, ytdStartPrice) : null;
-    } catch {
+    } catch (e) {
       // Continue without YTD
     }
 
