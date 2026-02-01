@@ -62,9 +62,9 @@ function App() {
         </div>
 
         <footer className="mt-6 text-center text-sm text-gray-500">
-          <p>Data updates every 30 seconds • Powered by Yahoo Finance</p>
+          <p>Data updates every 30 seconds • Powered by Massive.com</p>
           <p className="mt-1 text-xs">
-            Tip: Use BTC-USD for Bitcoin, ETH-USD for Ethereum, GC=F for Gold, CL=F for Crude Oil
+            Search for any US stock ticker (e.g., AAPL, MSFT, TSLA)
           </p>
         </footer>
       </div>
