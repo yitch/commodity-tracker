@@ -6,6 +6,28 @@ interface AddAssetFormProps {
   onAdd: (ticker: string, type: string) => Promise<void>;
 }
 
+function detectAssetType(typeString: string | undefined): string {
+  if (!typeString) return 'stock';
+  const lowerType = typeString.toLowerCase();
+  if (lowerType.includes('crypto') || lowerType.includes('currency')) {
+    return 'crypto';
+  } else if (lowerType.includes('etf')) {
+    return 'etf';
+  } else if (lowerType.includes('commodity') || lowerType.includes('future')) {
+    return 'commodity';
+  }
+  return 'stock';
+}
+
+function getTypeLabel(type: string): string {
+  switch (type) {
+    case 'crypto': return 'Crypto';
+    case 'etf': return 'ETF';
+    case 'commodity': return 'Commodity';
+    default: return 'Stock';
+  }
+}
+
 export function AddAssetForm({ onAdd }: AddAssetFormProps) {
   const [ticker, setTicker] = useState('');
   const [type, setType] = useState('stock');
@@ -80,6 +102,7 @@ export function AddAssetForm({ onAdd }: AddAssetFormProps) {
     try {
       await onAdd(ticker.toUpperCase(), type);
       setTicker('');
+      setType('stock');
       setSuggestions([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add asset');
@@ -90,19 +113,7 @@ export function AddAssetForm({ onAdd }: AddAssetFormProps) {
 
   const handleSuggestionClick = (suggestion: SearchResult) => {
     setTicker(suggestion.symbol);
-    // Auto-detect type based on suggestion
-    if (suggestion.type) {
-      const lowerType = suggestion.type.toLowerCase();
-      if (lowerType.includes('crypto') || lowerType.includes('currency')) {
-        setType('crypto');
-      } else if (lowerType.includes('etf')) {
-        setType('etf');
-      } else if (lowerType.includes('commodity') || lowerType.includes('future')) {
-        setType('commodity');
-      } else {
-        setType('stock');
-      }
-    }
+    setType(detectAssetType(suggestion.type));
     setShowSuggestions(false);
     setSuggestions([]);
   };
@@ -135,7 +146,7 @@ export function AddAssetForm({ onAdd }: AddAssetFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="flex items-center gap-3 mb-4">
-      <div className="relative flex-1 max-w-xs">
+      <div className="relative flex-1 max-w-md">
         <input
           ref={inputRef}
           type="text"
@@ -143,7 +154,7 @@ export function AddAssetForm({ onAdd }: AddAssetFormProps) {
           onChange={(e) => setTicker(e.target.value.toUpperCase())}
           onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
           onKeyDown={handleKeyDown}
-          placeholder="Search ticker (e.g., AAPL, MSFT)"
+          placeholder="Search for stocks, ETFs, crypto..."
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           disabled={loading}
           autoComplete="off"
@@ -169,8 +180,8 @@ export function AddAssetForm({ onAdd }: AddAssetFormProps) {
               >
                 <div className="flex justify-between items-center">
                   <span className="font-medium text-sm">{suggestion.symbol}</span>
-                  <span className="text-xs text-gray-500 capitalize">
-                    {suggestion.type}
+                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                    {getTypeLabel(detectAssetType(suggestion.type))}
                   </span>
                 </div>
                 <div className="text-xs text-gray-600 truncate">
@@ -182,17 +193,11 @@ export function AddAssetForm({ onAdd }: AddAssetFormProps) {
         )}
       </div>
 
-      <select
-        value={type}
-        onChange={(e) => setType(e.target.value)}
-        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-        disabled={loading}
-      >
-        <option value="stock">Stock</option>
-        <option value="crypto">Crypto</option>
-        <option value="commodity">Commodity</option>
-        <option value="etf">ETF</option>
-      </select>
+      {type !== 'stock' && (
+        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+          {getTypeLabel(type)}
+        </span>
+      )}
 
       <button
         type="submit"
