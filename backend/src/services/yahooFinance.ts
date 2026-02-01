@@ -2,6 +2,11 @@ import YahooFinance from 'yahoo-finance2';
 
 const yahooFinance = new YahooFinance();
 
+// Suppress notices if method exists
+if (typeof (yahooFinance as any).suppressNotices === 'function') {
+  (yahooFinance as any).suppressNotices(['yahooSurvey']);
+}
+
 export interface AssetQuote {
   ticker: string;
   name: string;
@@ -28,9 +33,35 @@ function calculatePercentChange(current: number, previous: number): number {
   return ((current - previous) / previous) * 100;
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(ticker: string, retries = 3): Promise<any> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const quote = await yahooFinance.quote(ticker);
+      return quote;
+    } catch (error: any) {
+      console.log(`Attempt ${i + 1} failed for ${ticker}:`, error.message);
+      if (i < retries - 1) {
+        // Wait longer between retries (2s, 4s, 8s)
+        await delay(2000 * Math.pow(2, i));
+      } else {
+        throw error;
+      }
+    }
+  }
+}
+
 export async function getAssetQuote(ticker: string): Promise<AssetQuote | null> {
   try {
-    const quote: any = await yahooFinance.quote(ticker);
+    const quote: any = await fetchWithRetry(ticker);
+
+    if (!quote || !quote.regularMarketPrice) {
+      console.log(`No valid quote data for ${ticker}`);
+      return null;
+    }
 
     const currentPrice = quote.regularMarketPrice || 0;
     const fiftyTwoWeekHigh = quote.fiftyTwoWeekHigh || null;
@@ -97,8 +128,19 @@ export async function getAssetQuote(ticker: string): Promise<AssetQuote | null> 
 }
 
 export async function getMultipleAssetQuotes(tickers: string[]): Promise<AssetQuote[]> {
-  const results = await Promise.all(tickers.map(getAssetQuote));
-  return results.filter((result): result is AssetQuote => result !== null);
+  // Fetch sequentially with delays to avoid rate limiting
+  const results: AssetQuote[] = [];
+  for (const ticker of tickers) {
+    const quote = await getAssetQuote(ticker);
+    if (quote) {
+      results.push(quote);
+    }
+    // Small delay between requests
+    if (tickers.indexOf(ticker) < tickers.length - 1) {
+      await delay(500);
+    }
+  }
+  return results;
 }
 
 // Search is not available in this version of yahoo-finance2

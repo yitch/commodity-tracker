@@ -21,7 +21,13 @@
       "Bash(npm show:*)",
       "Bash(npm run build)",
       "Bash(node -e:*)",
-      "Bash(node --input-type=module -e:*)"
+      "Bash(node --input-type=module -e:*)",
+      "Bash(npm install:*)",
+      "Bash(vercel whoami:*)",
+      "Bash(vercel:*)",
+      "Bash(railway logs:*)",
+      "Bash(railway run npx prisma:*)",
+      "Bash(railway variables:*)"
     ]
   }
 }
