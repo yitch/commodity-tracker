@@ -12,7 +12,7 @@ const prisma = new PrismaClient();
 const MAX_ASSETS = 50;
 
 // Get all tracked assets with current data
-router.get('/', asyncHandler(async (req: Request, res: Response) => {
+router.get('/', asyncHandler(async (_req: Request, res: Response) => {
   const assets = await prisma.asset.findMany({
     orderBy: { createdAt: 'asc' },
     take: MAX_ASSETS,
@@ -49,8 +49,8 @@ router.get('/search/:query', validateParams(searchParamSchema), asyncHandler(asy
 
 // Get single asset quote
 router.get('/:ticker', validateParams(tickerParamSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { ticker } = req.params;
-  const quote = await getAssetQuote(ticker);
+  const tickerParam = req.params.ticker;
+  const quote = await getAssetQuote(tickerParam);
 
   if (!quote) {
     throw new AppError(404, 'Asset not found');
@@ -61,7 +61,7 @@ router.get('/:ticker', validateParams(tickerParamSchema), asyncHandler(async (re
 
 // Add new asset to watchlist
 router.post('/', validateBody(addAssetSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { ticker, type } = req.body;
+  const { ticker: inputTicker, type } = req.body;
 
   // Check asset count limit
   const assetCount = await prisma.asset.count();
@@ -71,7 +71,7 @@ router.post('/', validateBody(addAssetSchema), asyncHandler(async (req: Request,
 
   // Check if asset already exists
   const existing = await prisma.asset.findUnique({
-    where: { ticker },
+    where: { ticker: inputTicker },
   });
 
   if (existing) {
@@ -79,7 +79,7 @@ router.post('/', validateBody(addAssetSchema), asyncHandler(async (req: Request,
   }
 
   // Verify ticker exists by fetching quote
-  const quote = await getAssetQuote(ticker);
+  const quote = await getAssetQuote(inputTicker);
   if (!quote) {
     throw new AppError(404, 'Asset not found on market');
   }
@@ -87,7 +87,7 @@ router.post('/', validateBody(addAssetSchema), asyncHandler(async (req: Request,
   // Create in database
   const asset = await prisma.asset.create({
     data: {
-      ticker,
+      ticker: inputTicker,
       name: quote.name,
       type,
     },
@@ -103,10 +103,10 @@ router.post('/', validateBody(addAssetSchema), asyncHandler(async (req: Request,
 
 // Remove asset from watchlist
 router.delete('/:ticker', validateParams(tickerParamSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { ticker } = req.params;
+  const tickerParam = req.params.ticker;
 
   const asset = await prisma.asset.findUnique({
-    where: { ticker },
+    where: { ticker: tickerParam },
   });
 
   if (!asset) {
@@ -114,7 +114,7 @@ router.delete('/:ticker', validateParams(tickerParamSchema), asyncHandler(async 
   }
 
   await prisma.asset.delete({
-    where: { ticker },
+    where: { ticker: tickerParam },
   });
 
   res.json({ message: 'Asset removed from watchlist' });

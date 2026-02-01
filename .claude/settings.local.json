@@ -17,7 +17,8 @@
       "Bash(railway up:*)",
       "Bash(railway link:*)",
       "Bash(git add:*)",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(npm show:*)"
     ]
   }
 }
