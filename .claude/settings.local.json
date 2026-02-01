@@ -18,7 +18,10 @@
       "Bash(railway link:*)",
       "Bash(git add:*)",
       "Bash(git push)",
-      "Bash(npm show:*)"
+      "Bash(npm show:*)",
+      "Bash(npm run build)",
+      "Bash(node -e:*)",
+      "Bash(node --input-type=module -e:*)"
     ]
   }
 }
