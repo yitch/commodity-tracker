@@ -17,7 +17,7 @@ function getPerformanceColor(value: number): string {
 }
 
 export function PerformanceCell({ value, showSign = true }: PerformanceCellProps) {
-  if (value === null || value === undefined) {
+  if (value == null || !isFinite(value)) {
     return (
       <span className="inline-block px-2 py-0.5 text-xs bg-gray-200 text-gray-600 rounded">
         n/a

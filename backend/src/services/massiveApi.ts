@@ -2,6 +2,10 @@
 
 const MASSIVE_BASE_URL = 'https://api.massive.com';
 
+// Simple in-memory cache with TTL
+const cache = new Map<string, { data: any; expiry: number }>();
+const CACHE_TTL = 60000; // 1 minute cache
+
 export interface AssetQuote {
   ticker: string;
   name: string;
@@ -42,74 +46,48 @@ function calculatePercentChange(current: number, previous: number): number {
   return ((current - previous) / previous) * 100;
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+function getCached<T>(key: string): T | null {
+  const cached = cache.get(key);
+  if (cached && cached.expiry > Date.now()) {
+    return cached.data as T;
+  }
+  cache.delete(key);
+  return null;
 }
 
-async function fetchWithRetry<T>(url: string, retries = 3): Promise<T | null> {
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await fetch(url);
+function setCache(key: string, data: any): void {
+  cache.set(key, { data, expiry: Date.now() + CACHE_TTL });
+}
 
-      if (response.status === 429) {
-        console.log(`Rate limited, attempt ${i + 1}`);
-        if (i < retries - 1) {
-          await delay(2000 * Math.pow(2, i));
-          continue;
-        }
-        return null;
-      }
+async function fetchWithRetry<T>(url: string, cacheKey?: string): Promise<T | null> {
+  // Check cache first
+  if (cacheKey) {
+    const cached = getCached<T>(cacheKey);
+    if (cached) return cached;
+  }
 
-      if (!response.ok) {
-        console.log(`API error: ${response.status} ${response.statusText}`);
-        return null;
-      }
+  try {
+    const response = await fetch(url);
 
-      return await response.json() as T;
-    } catch (error: any) {
-      console.log(`Attempt ${i + 1} failed:`, error.message);
-      if (i < retries - 1) {
-        await delay(2000 * Math.pow(2, i));
-      }
+    if (response.status === 429) {
+      console.log('Rate limited');
+      return null;
     }
+
+    if (!response.ok) {
+      console.log(`API error: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const data = await response.json() as T;
+    if (cacheKey) {
+      setCache(cacheKey, data);
+    }
+    return data;
+  } catch (error: any) {
+    console.log(`Fetch failed:`, error.message);
+    return null;
   }
-  return null;
-}
-
-// Get ticker details (name, market cap, etc.)
-async function getTickerDetails(ticker: string): Promise<any> {
-  const apiKey = getApiKey();
-  const url = `${MASSIVE_BASE_URL}/v3/reference/tickers/${ticker}?apiKey=${apiKey}`;
-  const data = await fetchWithRetry<any>(url);
-  return data?.results || null;
-}
-
-// Get current snapshot (price, daily change)
-async function getTickerSnapshot(ticker: string): Promise<any> {
-  const apiKey = getApiKey();
-  const url = `${MASSIVE_BASE_URL}/v2/snapshot/locale/us/markets/stocks/tickers/${ticker}?apiKey=${apiKey}`;
-  const data = await fetchWithRetry<any>(url);
-  return data?.ticker || null;
-}
-
-// Get historical bars for charts and calculating changes
-async function getHistoricalBars(ticker: string, from: string, to: string, timespan: string = 'day'): Promise<any[]> {
-  const apiKey = getApiKey();
-  const url = `${MASSIVE_BASE_URL}/v2/aggs/ticker/${ticker}/range/1/${timespan}/${from}/${to}?adjusted=true&sort=asc&apiKey=${apiKey}`;
-  const data = await fetchWithRetry<any>(url);
-  return data?.results || [];
-}
-
-// Get SMA indicator
-async function getSMA(ticker: string, window: number): Promise<number | null> {
-  const apiKey = getApiKey();
-  const url = `${MASSIVE_BASE_URL}/v1/indicators/sma/${ticker}?timespan=day&adjusted=true&window=${window}&series_type=close&limit=1&apiKey=${apiKey}`;
-  const data = await fetchWithRetry<any>(url);
-  const values = data?.results?.values;
-  if (values && values.length > 0) {
-    return values[0].value;
-  }
-  return null;
 }
 
 function getDateString(daysAgo: number): string {
@@ -118,41 +96,67 @@ function getDateString(daysAgo: number): string {
   return date.toISOString().split('T')[0];
 }
 
+// Get ticker snapshot (includes current price) - uses v2 snapshot endpoint
+async function getTickerSnapshot(ticker: string): Promise<any> {
+  const apiKey = getApiKey();
+  const url = `${MASSIVE_BASE_URL}/v2/snapshot/locale/us/markets/stocks/tickers/${ticker}?apiKey=${apiKey}`;
+  const data = await fetchWithRetry<any>(url, `snapshot:${ticker}`);
+  return data?.ticker || null;
+}
+
+// Get ticker details (name, market cap)
+async function getTickerDetails(ticker: string): Promise<any> {
+  const apiKey = getApiKey();
+  const url = `${MASSIVE_BASE_URL}/v3/reference/tickers/${ticker}?apiKey=${apiKey}`;
+  const data = await fetchWithRetry<any>(url, `details:${ticker}`);
+  return data?.results || null;
+}
+
+// Get historical bars - optimized to get less data for faster response
+async function getHistoricalBars(ticker: string, from: string, to: string): Promise<any[]> {
+  const apiKey = getApiKey();
+  const url = `${MASSIVE_BASE_URL}/v2/aggs/ticker/${ticker}/range/1/day/${from}/${to}?adjusted=true&sort=asc&limit=260&apiKey=${apiKey}`;
+  const data = await fetchWithRetry<any>(url, `bars:${ticker}:${from}:${to}`);
+  return data?.results || [];
+}
+
+// Calculate SMA from historical data instead of making separate API calls
+function calculateSMA(bars: any[], period: number): number | null {
+  if (bars.length < period) return null;
+  const recentBars = bars.slice(-period);
+  const sum = recentBars.reduce((acc: number, bar: any) => acc + bar.c, 0);
+  return sum / period;
+}
+
 export async function getAssetQuote(ticker: string): Promise<AssetQuote | null> {
   try {
-    // Normalize ticker - Massive uses uppercase
     const normalizedTicker = ticker.toUpperCase();
 
-    // Handle crypto tickers - Massive uses X: prefix for crypto
+    // Handle crypto tickers
     let massiveTicker = normalizedTicker;
     if (normalizedTicker.endsWith('-USD')) {
-      // Convert BTC-USD to X:BTCUSD
       massiveTicker = `X:${normalizedTicker.replace('-USD', 'USD')}`;
     }
 
-    // Fetch data in parallel where possible (respecting rate limits)
-    const [details, snapshot] = await Promise.all([
-      getTickerDetails(massiveTicker),
-      getTickerSnapshot(massiveTicker),
-    ]);
-
-    // Small delay before more requests (free tier: 5 calls/min)
-    await delay(250);
-
-    // Get historical data for the last year
+    // Get dates
     const today = getDateString(0);
     const oneYearAgo = getDateString(365);
     const ytdStart = `${new Date().getFullYear()}-01-01`;
     const oneMonthAgo = getDateString(30);
 
-    const historicalBars = await getHistoricalBars(massiveTicker, oneYearAgo, today);
+    // Fetch all data in parallel for speed
+    const [snapshot, details, historicalBars] = await Promise.all([
+      getTickerSnapshot(massiveTicker),
+      getTickerDetails(massiveTicker),
+      getHistoricalBars(massiveTicker, oneYearAgo, today),
+    ]);
 
     if (!snapshot && !details && historicalBars.length === 0) {
       console.log(`No data found for ${ticker}`);
       return null;
     }
 
-    // Calculate current price from snapshot or last bar
+    // Calculate current price
     let currentPrice = 0;
     if (snapshot?.day?.c) {
       currentPrice = snapshot.day.c;
@@ -167,13 +171,12 @@ export async function getAssetQuote(ticker: string): Promise<AssetQuote | null> 
       return null;
     }
 
-    // Calculate 52-week high from historical data
+    // Calculate 52-week high
     let fiftyTwoWeekHigh: number | null = null;
     if (historicalBars.length > 0) {
       fiftyTwoWeekHigh = Math.max(...historicalBars.map((b: any) => b.h));
     }
 
-    // Calculate delta from 52-week high
     const deltaFrom52WeekHigh = fiftyTwoWeekHigh
       ? calculatePercentChange(currentPrice, fiftyTwoWeekHigh)
       : null;
@@ -191,8 +194,7 @@ export async function getAssetQuote(ticker: string): Promise<AssetQuote | null> 
     // Calculate 1-year change
     let oneYearChange: number | null = null;
     if (historicalBars.length > 0) {
-      const firstBar = historicalBars[0];
-      oneYearChange = calculatePercentChange(currentPrice, firstBar.c);
+      oneYearChange = calculatePercentChange(currentPrice, historicalBars[0].c);
     }
 
     // Calculate 1-month change
@@ -205,24 +207,21 @@ export async function getAssetQuote(ticker: string): Promise<AssetQuote | null> 
       oneMonthChange = calculatePercentChange(currentPrice, oneMonthBar.o);
     }
 
-    // Extract historical prices for sparkline (last 50 data points)
+    // Get last 50 prices for sparkline
     const historicalPrices = historicalBars.slice(-50).map((b: any) => b.c);
 
-    // Get SMAs (with delays for rate limiting)
-    await delay(300);
-    const sma20 = await getSMA(massiveTicker, 20);
-    await delay(300);
-    const sma50 = await getSMA(massiveTicker, 50);
-    await delay(300);
-    const sma200 = await getSMA(massiveTicker, 200);
+    // Calculate SMAs from historical data (no extra API calls!)
+    const sma20 = calculateSMA(historicalBars, 20);
+    const sma50 = calculateSMA(historicalBars, 50);
+    const sma200 = calculateSMA(historicalBars, 200);
 
     return {
       ticker: normalizedTicker,
       name: details?.name || normalizedTicker,
       price: currentPrice,
       marketCap: details?.market_cap || null,
-      priceToSales: null, // Not available in Massive API free tier
-      priceToEarnings: null, // Not available in Massive API free tier
+      priceToSales: null, // Would need Financial Modeling Prep API
+      priceToEarnings: null, // Would need Financial Modeling Prep API
       ytdChange,
       oneYearChange,
       fiftyTwoWeekHigh,
@@ -243,31 +242,19 @@ export async function getAssetQuote(ticker: string): Promise<AssetQuote | null> 
 }
 
 export async function getMultipleAssetQuotes(tickers: string[]): Promise<AssetQuote[]> {
-  const results: AssetQuote[] = [];
-
-  // Process sequentially with delays to respect rate limits (5 calls/min on free tier)
-  for (const ticker of tickers) {
-    const quote = await getAssetQuote(ticker);
-    if (quote) {
-      results.push(quote);
-    }
-    // Longer delay between assets to stay within rate limits
-    if (tickers.indexOf(ticker) < tickers.length - 1) {
-      await delay(2000); // 2 second delay between assets
-    }
-  }
-
-  return results;
+  // Fetch all quotes in parallel for maximum speed
+  const promises = tickers.map(ticker => getAssetQuote(ticker));
+  const results = await Promise.all(promises);
+  return results.filter((quote): quote is AssetQuote => quote !== null);
 }
 
-// Search for tickers - this supports autocomplete
+// Search for tickers - supports autocomplete
 export async function searchAssets(query: string): Promise<SearchResult[]> {
   try {
     const apiKey = getApiKey();
-    // Use the search parameter to find matching tickers
     const url = `${MASSIVE_BASE_URL}/v3/reference/tickers?search=${encodeURIComponent(query)}&active=true&limit=10&apiKey=${apiKey}`;
 
-    const data = await fetchWithRetry<any>(url);
+    const data = await fetchWithRetry<any>(url, `search:${query}`);
 
     if (!data?.results) {
       return [];

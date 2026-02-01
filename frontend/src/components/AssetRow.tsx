@@ -9,24 +9,24 @@ interface AssetRowProps {
   onRemove: (ticker: string) => void;
 }
 
-function formatPrice(price: number | null): string {
-  if (price === null) return 'n/a';
+function formatPrice(price: number | null | undefined): string {
+  if (price == null || !isFinite(price)) return 'n/a';
   if (price >= 1000) {
     return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
   return `$${price.toFixed(2)}`;
 }
 
-function formatMarketCap(cap: number | null): string {
-  if (cap === null) return 'n/a';
+function formatMarketCap(cap: number | null | undefined): string {
+  if (cap == null || !isFinite(cap)) return 'n/a';
   if (cap >= 1e12) return `$${(cap / 1e12).toFixed(1)}T`;
   if (cap >= 1e9) return `$${(cap / 1e9).toFixed(1)}B`;
   if (cap >= 1e6) return `$${(cap / 1e6).toFixed(1)}M`;
   return `$${cap.toLocaleString()}`;
 }
 
-function formatRatio(ratio: number | null): string {
-  if (ratio === null || !isFinite(ratio)) return 'n/a';
+function formatRatio(ratio: number | null | undefined): string {
+  if (ratio == null || !isFinite(ratio)) return 'n/a';
   return ratio.toFixed(2);
 }
 
