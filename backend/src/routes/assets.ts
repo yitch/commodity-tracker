@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { getAssetQuote, getMultipleAssetQuotes, searchAssets } from '../services/yahooFinance.js';
+import { getAssetQuote, getMultipleAssetQuotes, searchAssets } from '../services/massiveApi.js';
 import { validateBody, validateParams } from '../middleware/validate.js';
 import { addAssetSchema, tickerParamSchema, searchParamSchema } from '../validation/schemas.js';
 import { asyncHandler, AppError } from '../middleware/errorHandler.js';

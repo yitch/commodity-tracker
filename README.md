@@ -6,7 +6,8 @@ A real-time tracker for stocks, cryptocurrencies, and commodities with a dashboa
 
 ## Features
 
-- **Real-time Data**: Prices update every 30 seconds via Yahoo Finance API
+- **Real-time Data**: Prices update every 30 seconds via Massive.com API (formerly Polygon.io)
+- **Ticker Autocomplete**: Search and find tickers as you type
 - **Multi-Asset Support**: Track stocks, crypto, commodities, and ETFs
 - **Comprehensive Metrics**:
   - Current price and market cap
@@ -25,7 +26,7 @@ A real-time tracker for stocks, cryptocurrencies, and commodities with a dashboa
 ### Backend
 - **Node.js** + **Express** + **TypeScript**
 - **Prisma ORM** with PostgreSQL
-- **Yahoo Finance API** for market data
+- **Massive.com API** (formerly Polygon.io) for market data
 - **Security**: Helmet, rate limiting, Zod validation
 
 ### Frontend
@@ -38,6 +39,7 @@ A real-time tracker for stocks, cryptocurrencies, and commodities with a dashboa
 ### Prerequisites
 - Node.js 20+
 - PostgreSQL database (or use [Neon](https://neon.tech) free tier)
+- Massive.com API key (free tier available at [massive.com](https://massive.com))
 
 ### Local Development
 
@@ -52,8 +54,9 @@ A real-time tracker for stocks, cryptocurrencies, and commodities with a dashboa
    cd backend
    npm install
 
-   # Create .env file with your PostgreSQL connection
+   # Create .env file with your PostgreSQL connection and API key
    echo 'DATABASE_URL="postgresql://user:password@localhost:5432/commodity_tracker"' > .env
+   echo 'MASSIVE_API_KEY="your_api_key_here"' >> .env
 
    # Push database schema
    npx prisma db push
@@ -180,6 +183,7 @@ DATABASE_URL=postgresql://user:password@host:5432/database
 NODE_ENV=production
 FRONTEND_URL=https://your-frontend.vercel.app
 PORT=3001
+MASSIVE_API_KEY=your_massive_api_key
 ```
 
 ### Frontend (.env)
