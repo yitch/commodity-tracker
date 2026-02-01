@@ -21,6 +21,16 @@ export interface AssetQuote {
   oneMonthChange: number | null;
 }
 
+interface HistoricalQuote {
+  date: Date;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  close: number | null;
+  volume: number | null;
+  adjClose?: number | null;
+}
+
 function calculateSMA(prices: number[], period: number): number | null {
   if (prices.length < period) return null;
   const relevantPrices = prices.slice(-period);
@@ -41,15 +51,15 @@ export async function getAssetQuote(ticker: string): Promise<AssetQuote | null> 
     const startDate = new Date();
     startDate.setFullYear(startDate.getFullYear() - 1);
 
-    const historical = await yahooFinance.chart(ticker, {
+    const historical = await yahooFinance.historical(ticker, {
       period1: startDate,
       period2: endDate,
       interval: '1d',
-    });
+    }) as HistoricalQuote[];
 
-    const historicalPrices = historical.quotes
-      .filter((q) => q.close !== null)
-      .map((q) => q.close as number);
+    const historicalPrices = historical
+      .filter((q: HistoricalQuote) => q.close !== null)
+      .map((q: HistoricalQuote) => q.close as number);
 
     const currentPrice = quote.regularMarketPrice || 0;
 
@@ -60,13 +70,13 @@ export async function getAssetQuote(ticker: string): Promise<AssetQuote | null> 
 
     // Calculate YTD change
     const yearStart = new Date(new Date().getFullYear(), 0, 1);
-    const ytdHistorical = await yahooFinance.chart(ticker, {
+    const ytdHistorical = await yahooFinance.historical(ticker, {
       period1: yearStart,
       period2: endDate,
       interval: '1d',
-    });
+    }) as HistoricalQuote[];
 
-    const ytdPrices = ytdHistorical.quotes.filter((q) => q.close !== null);
+    const ytdPrices = ytdHistorical.filter((q: HistoricalQuote) => q.close !== null);
     const ytdStartPrice = ytdPrices.length > 0 ? ytdPrices[0].close : null;
     const ytdChange = ytdStartPrice ? calculatePercentChange(currentPrice, ytdStartPrice as number) : null;
 
@@ -116,13 +126,23 @@ export async function getMultipleAssetQuotes(tickers: string[]): Promise<AssetQu
   return results.filter((result): result is AssetQuote => result !== null);
 }
 
+interface SearchQuote {
+  symbol: string;
+  shortname?: string;
+  quoteType?: string;
+}
+
+interface SearchResult {
+  quotes: SearchQuote[];
+}
+
 export async function searchAssets(query: string): Promise<{ symbol: string; name: string; type: string }[]> {
   try {
-    const results = await yahooFinance.search(query);
+    const results = await yahooFinance.search(query) as SearchResult;
     return results.quotes
-      .filter((q) => q.symbol && q.shortname)
+      .filter((q: SearchQuote) => q.symbol && q.shortname)
       .slice(0, 10)
-      .map((q) => ({
+      .map((q: SearchQuote) => ({
         symbol: q.symbol,
         name: q.shortname || q.symbol,
         type: q.quoteType || 'unknown',

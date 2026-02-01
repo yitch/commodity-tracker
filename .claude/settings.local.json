@@ -5,7 +5,19 @@
       "Bash(npx prisma generate:*)",
       "Bash(npx prisma db push:*)",
       "Bash(lsof:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git commit:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh repo create:*)",
+      "Bash(gh repo view:*)",
+      "Bash(brew install:*)",
+      "Bash(railway whoami:*)",
+      "Bash(railway status:*)",
+      "Bash(railway service:*)",
+      "Bash(railway up:*)",
+      "Bash(railway link:*)",
+      "Bash(git add:*)",
+      "Bash(git push)"
     ]
   }
 }
