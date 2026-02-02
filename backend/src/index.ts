@@ -42,6 +42,8 @@ const writeLimiter = rateLimit({
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
+  'https://frontend-six-blond-32.vercel.app',
+  'https://frontend-yitchs-projects.vercel.app',
   process.env.FRONTEND_URL,
 ].filter(Boolean) as string[];
 
