@@ -1,3 +1,11 @@
+export type SignalType = 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell';
+
+export interface TradingSignal {
+  signal: SignalType;
+  score: number;
+  reasons: string[];
+}
+
 export interface Asset {
   id: number;
   ticker: string;
@@ -19,6 +27,9 @@ export interface Asset {
   priceVsSma50: 'above' | 'below' | null;
   priceVsSma200: 'above' | 'below' | null;
   oneMonthChange: number | null;
+  shortTermSignal: TradingSignal | null;
+  longTermSignal: TradingSignal | null;
+  rsi: number | null;
 }
 
 export interface SearchResult {

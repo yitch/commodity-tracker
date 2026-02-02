@@ -66,6 +66,12 @@ function App() {
           <p className="mt-1 text-xs">
             Search for any US stock ticker (e.g., AAPL, MSFT, TSLA)
           </p>
+          <p className="mt-3 text-xs text-gray-400 max-w-2xl mx-auto">
+            <strong>Disclaimer:</strong> The information provided is for informational purposes only and does not constitute financial advice.
+            Trading signals are generated algorithmically and should not be relied upon as the sole basis for investment decisions.
+            Past performance does not guarantee future results. Investing involves risk, including the potential loss of principal.
+            You are solely responsible for your own investment decisions.
+          </p>
         </footer>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Asset } from '../types/asset';
 import { fetchAssets, addAsset as apiAddAsset, removeAsset as apiRemoveAsset } from '../services/api';
 
@@ -9,13 +9,19 @@ export function useAssetData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const isInitialLoad = useRef(true);
 
   const loadAssets = useCallback(async () => {
+    // Only show loading spinner on initial load, not on refresh
+    if (isInitialLoad.current) {
+      setLoading(true);
+    }
     try {
       const data = await fetchAssets();
       setAssets(data);
       setLastUpdated(new Date());
       setError(null);
+      isInitialLoad.current = false;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load assets');
     } finally {

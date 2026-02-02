@@ -3,6 +3,7 @@ import { SparklineChart } from './SparklineChart';
 import { PerformanceCell } from './PerformanceCell';
 import { MAIndicators } from './MAIndicators';
 import { RSRankBar } from './RSRankBar';
+import { SignalCell } from './SignalCell';
 
 interface AssetRowProps {
   asset: Asset;
@@ -93,6 +94,12 @@ export function AssetRow({ asset, onRemove }: AssetRowProps) {
           priceVsSma50={asset.priceVsSma50}
           priceVsSma200={asset.priceVsSma200}
         />
+      </td>
+      <td className="py-2 px-3 text-center">
+        <SignalCell signal={asset.shortTermSignal} label="1-Week Signal" />
+      </td>
+      <td className="py-2 px-3 text-center">
+        <SignalCell signal={asset.longTermSignal} label="Long-Term Signal (2+ years)" />
       </td>
       <td className="py-2 px-3">
         <button

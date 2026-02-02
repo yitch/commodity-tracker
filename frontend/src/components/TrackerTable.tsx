@@ -12,7 +12,7 @@ interface SortConfig {
   direction: SortDirection;
 }
 
-const columns: { key: SortField | 'chart' | 'rsRank' | 'ma' | 'actions'; label: string; sortable: boolean }[] = [
+const columns: { key: SortField | 'chart' | 'rsRank' | 'ma' | 'shortTerm' | 'longTerm' | 'actions'; label: string; sortable: boolean }[] = [
   { key: 'ticker', label: 'Ticker', sortable: true },
   { key: 'name', label: 'Company', sortable: true },
   { key: 'price', label: 'Price', sortable: true },
@@ -25,6 +25,8 @@ const columns: { key: SortField | 'chart' | 'rsRank' | 'ma' | 'actions'; label: 
   { key: 'deltaFrom52WeekHigh', label: 'Δ 52w High', sortable: true },
   { key: 'rsRank', label: 'RS Rank', sortable: false },
   { key: 'ma', label: '1M 20 50 200', sortable: false },
+  { key: 'shortTerm', label: '1-Week', sortable: false },
+  { key: 'longTerm', label: 'Long-Term', sortable: false },
   { key: 'actions', label: '', sortable: false },
 ];
 
